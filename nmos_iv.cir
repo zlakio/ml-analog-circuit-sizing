@@ -1,0 +1,12 @@
+* NMOS Id-Vds curves, SKY130
+.lib /foss/pdks/sky130A/libs.tech/ngspice/sky130.lib.spice tt
+
+Vds d 0 0
+Vgs g 0 0
+XM1 d g 0 0 sky130_fd_pr__nfet_01v8 W=2 L=0.5
+
+.control
+dc Vds 0 1.8 0.01 Vgs 0.6 1.8 0.2
+plot -i(Vds)
+.endc
+.end
