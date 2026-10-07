@@ -1,0 +1,22 @@
+* Common-source amplifier, SKY130
+.lib /foss/pdks/sky130A/libs.tech/ngspice/sky130.lib.spice tt
+
+Vdd vdd 0 1.8
+Vin g 0 dc 0.8 ac 1
+RD vdd out 10k
+CL out 0 1p
+XM1 out g 0 0 sky130_fd_pr__nfet_01v8 W=2 L=0.5
+
+.control
+op
+print v(out)
+print -i(Vdd)
+ac dec 50 1k 10G
+let gain_db = vdb(out)
+plot gain_db xlog
+meas ac dcgain find vdb(out) at=1k
+let tgt = dcgain - 3
+meas ac f3db when vdb(out)=$&tgt fall=1
+meas ac ugf when vdb(out)=0 fall=1
+.endc
+.end
