@@ -83,7 +83,7 @@ The gain at 0.7 V is read from the plot. The other values come from ngspice `mea
 - [x] Set up simulation toolchain (Docker, ngspice, Xschem, SKY130)
 - [x] NMOS I-V curves and transconductance (gm)
 - [x] Common-source amplifier (gain, bandwidth, power)
-- [ ] 5-transistor OTA
+- [x] 5-transistor OTA
 - [ ] Automated dataset generation from Python
 - [ ] ML models and comparison
 - [ ] Optimization and interactive demo app
