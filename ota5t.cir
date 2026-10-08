@@ -1,0 +1,34 @@
+* 5T OTA, SKY130
+.lib /foss/pdks/sky130A/libs.tech/ngspice/sky130.lib.spice tt
+
+Vdd vdd 0 1.8
+Vinn inn 0 dc 1.0
+Vinp inp 0 dc 1.0 ac 1
+Ib vdd nb 10u
+CL out 0 1p
+
+* tail current mirror
+XM6 nb nb 0 0 sky130_fd_pr__nfet_01v8 W=2 L=1
+XM5 tail nb 0 0 sky130_fd_pr__nfet_01v8 W=4 L=1
+* differential pair
+XM1 d1 inp tail 0 sky130_fd_pr__nfet_01v8 W=4 L=0.5
+XM2 out inn tail 0 sky130_fd_pr__nfet_01v8 W=4 L=0.5
+* PMOS mirror load
+XM3 d1 d1 vdd vdd sky130_fd_pr__pfet_01v8 W=4 L=1
+XM4 out d1 vdd vdd sky130_fd_pr__pfet_01v8 W=4 L=1
+
+.nodeset v(out)=1.0 v(d1)=1.0
+
+.control
+op
+print v(out) v(d1) v(tail) v(nb)
+print -i(Vdd)
+ac dec 50 10 10G
+let gain_db = vdb(out)
+plot gain_db xlog
+meas ac dcgain find vdb(out) at=10
+let tgt = dcgain - 3
+meas ac f3db when vdb(out)=$&tgt fall=1
+meas ac ugf when vdb(out)=0 fall=1
+.endc
+.end
