@@ -3,3 +3,12 @@ __pycache__/
 .venv/
 venv/
 *.pyc
+dataset.csv
+*.csv
+*.pkl
+*.joblib
+*.h5
+*.onnx
+temp_*.cir
+*.log
+*.lis
