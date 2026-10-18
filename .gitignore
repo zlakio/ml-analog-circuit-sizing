@@ -1,14 +1,23 @@
-*.raw
+# Python
 __pycache__/
+*.pyc
 .venv/
 venv/
-*.pyc
-dataset.csv
-*.csv
-*.pkl
-*.joblib
-*.h5
-*.onnx
-temp_*.cir
+.ipynb_checkpoints/
+
+# ngspice raw output and logs
+*.raw
 *.log
-*.lis
+nohup.out
+
+# Scratch and test files
+test.csv
+*_row*.cir
+
+# Exported PDFs (the Markdown notes are the source)
+*.pdf
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db

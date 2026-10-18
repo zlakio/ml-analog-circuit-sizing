@@ -115,12 +115,16 @@ def run_one(sizing):
             return row
 
     out = parse_output(proc.stdout)
-    needed = ["v(out)", "v(d1)", "v(tail)", "-i(vdd)", "dcgain", "f3db", "ugf"]
-    missing = [k for k in needed if k not in out]
+
+    # Without the operating point and the DC gain there is nothing to record.
+    basics = ["v(out)", "v(d1)", "v(tail)", "-i(vdd)", "dcgain"]
+    missing = [k for k in basics if k not in out]
     if missing:
-        row.update(valid=0, reason="missing: " + ",".join(missing))
+        row.update(valid=0, reason="simulation failed: missing " + ",".join(missing))
         return row
 
+    # Record everything that was measured, even for circuits that get rejected,
+    # so the reason for each rejection can be checked later.
     row.update(
         vout=out["v(out)"],
         vd1=out["v(d1)"],
@@ -128,12 +132,14 @@ def run_one(sizing):
         i_supply_uA=out["-i(vdd)"] * 1e6,
         power_uW=VDD * out["-i(vdd)"] * 1e6,
         gain_db=out["dcgain"],
-        f3db_hz=out["f3db"],
-        ugf_hz=out["ugf"],
     )
+    if "f3db" in out:
+        row["f3db_hz"] = out["f3db"]
+    if "ugf" in out:
+        row["ugf_hz"] = out["ugf"]
 
     # Sanity filters: node voltages away from the rails, tail source not collapsed,
-    # and a real amplifier (gain above 0 dB with a measurable unity-gain frequency).
+    # and a real amplifier (gain above 0 dB with measurable f3db and unity-gain frequency).
     reason = ""
     if not 0.15 <= row["vout"] <= VDD - 0.15:
         reason = "output near a rail"
@@ -141,8 +147,14 @@ def run_one(sizing):
         reason = "mirror node near a rail"
     elif row["vtail"] < 0.1:
         reason = "tail source in triode"
-    elif row["gain_db"] <= 0 or row["ugf_hz"] <= 0:
-        reason = "no gain"
+    elif row["gain_db"] <= 0:
+        reason = "no gain (DC gain at or below 0 dB)"
+    elif "ugf_hz" not in row:
+        reason = "unity-gain frequency not found"
+    elif "f3db_hz" not in row:
+        reason = "f3db not found"
+    elif row["ugf_hz"] <= 0:
+        reason = "no gain (non-positive unity-gain frequency)"
     row.update(valid=0 if reason else 1, reason=reason)
     return row
 
@@ -158,22 +170,23 @@ def main():
     rng = random.Random(args.seed)
     sizings = [sample_sizing(rng) for _ in range(args.n)]
 
-    rows = []
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        for i, row in enumerate(pool.map(run_one, sizings), start=1):
-            rows.append(row)
-            if i % 50 == 0 or i == args.n:
-                valid = sum(r["valid"] for r in rows)
-                print(f"{i}/{args.n} simulated, {valid} valid so far")
-
     columns = list(RANGES) + [
         "vout", "vd1", "vtail", "i_supply_uA", "power_uW",
         "gain_db", "f3db_hz", "ugf_hz", "valid", "reason",
     ]
-    with open(args.out, "w", newline="") as f:
+    rows = []
+    # Each row is written to the CSV as soon as it finishes, so if the run is
+    # interrupted the rows completed so far are still saved.
+    with open(args.out, "w", newline="") as f, ThreadPoolExecutor(max_workers=args.workers) as pool:
         writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        for i, row in enumerate(pool.map(run_one, sizings), start=1):
+            rows.append(row)
+            writer.writerow(row)
+            f.flush()
+            if i % 50 == 0 or i == args.n:
+                valid = sum(r["valid"] for r in rows)
+                print(f"{i}/{args.n} simulated, {valid} valid so far", flush=True)
 
     valid = sum(r["valid"] for r in rows)
     print(f"Done. {valid}/{len(rows)} valid ({100 * valid / len(rows):.0f}%). Saved to {args.out}")
